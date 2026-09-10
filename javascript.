@@ -1,0 +1,48 @@
+import { create } from 'zustand';
+import { auth, db } from '../firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+
+export const useStore = create((set, get) => ({
+  user: null,
+  userData: null,
+  loading: true,
+
+  setUser: (user) => set({ user }),
+  setUserData: (userData) => set({ userData }),
+  setLoading: (loading) => set({ loading }),
+
+  // Fetch updated profile data for current user
+  refreshUserData: async () => {
+    const currentUser = get().user;
+    if (!currentUser) return;
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        set({ userData: userDoc.data() });
+      }
+    } catch (err) {
+      console.error("Error refreshing user data:", err);
+    }
+  },
+
+  // Check and claim daily bonus (+50 coins)
+  claimDailyBonus: async () => {
+    const { user, userData, refreshUserData } = get();
+    if (!user || !userData) return false;
+
+    const lastBonus = userData.lastLoginBonus ? userData.lastLoginBonus.toDate() : new Date(0);
+    const now = new Date();
+    
+    // Check if 24 hours have passed since last claim
+    if (now - lastBonus >= 24 * 60 * 60 * 1000) {
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        coins: (userData.coins || 0) + 50,
+        lastLoginBonus: now
+      });
+      await refreshUserData();
+      return true;
+    }
+    return false;
+  }
+}));

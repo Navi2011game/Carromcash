@@ -1,0 +1,63 @@
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from './firebase';
+import { useStore } from './store/useStore';
+import { Toaster } from 'react-hot-toast';
+
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
+
+import Landing from './pages/Landing';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Game from './pages/Game';
+import Wallet from './pages/Wallet';
+import Leaderboard from './pages/Leaderboard';
+import Admin from './pages/Admin';
+import Profile from './pages/Profile';
+import { HowToPlay } from './pages/HowToPlay';
+
+export default function App() {
+  const { setUser, setLoading, refreshUserData } = useStore();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setUser(user);
+      if (user) {
+        await refreshUserData();
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <BrowserRouter>
+      <div className="flex flex-col min-h-screen bg-[#1F0F2A] font-sans antialiased">
+        <Toaster position="top-center" />
+        <Navbar />
+        <main className="flex-1">
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/how-to-play" element={<HowToPlay />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+
+            {/* Protected User Routes */}
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/game" element={<ProtectedRoute><Game /></ProtectedRoute>} />
+            <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </BrowserRouter>
+  );
+}
